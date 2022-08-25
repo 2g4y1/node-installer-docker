@@ -1,7 +1,8 @@
 #!/bin/bash
 
-VRSN="0.8.1"
+VRSN="0.8.4"
 
+VAR_DOMAIN=''
 VAR_HOST=''
 VAR_DIR=''
 VAR_CERT=0
@@ -49,6 +50,19 @@ clear
 if [ -f "node-installer.sh" ]; then sudo rm node-installer.sh -f; fi
 if [ $(id -u) -ne 0 ]; then	echo $rd && echo 'Please run DLT.GREEN Automatic Node-Installer with sudo or as root' && echo $xx; exit; fi
 
+CheckDomain() {
+	if [ "$(dig +short "$1")" != "$(curl -s 'https://ipinfo.io/ip')" ]
+	then
+		echo ""
+	    echo "$rd""Attention! Verification of your specified Domain failed! Installation aborted!""$xx"
+	    echo "$rd""Maybe you entered a wrong Domain or the DNS is not reachable yet?""$xx"
+	    echo $fl; read -p 'Press [Enter] key to continue... Press [STRG+C] to cancel...' W; echo $xx
+		SubMenuMaintenance
+	else 
+	    echo "$gn""Verification of your specified Domain successful""$xx"
+	fi 
+}
+
 CheckCertificate() {
 	clear
 	echo ""
@@ -62,8 +76,8 @@ CheckCertificate() {
 		clear
 		echo ""
 		echo "╔═════════════════════════════════════════════════════════════════════════════╗"
-		echo "║               DLT.GREEN AUTOMATIC NODE-INSTALLER WITH DOCKER                ║"
-		echo "║                                    $VRSN                                    ║"
+		echo "║ DLT.GREEN           AUTOMATIC NODE-INSTALLER WITH DOCKER            v.$VRSN ║"
+		echo "║"$ca"$VAR_DOMAIN"$xx"║"
 		echo "║                                                                             ║"
 		echo "║                            1. Use existing Certificate                      ║"
 		echo "║                            X. Generate new Let's Encrypt Certificate        ║"
@@ -105,8 +119,8 @@ CheckConfiguration() {
 		clear
 		echo ""
 		echo "╔═════════════════════════════════════════════════════════════════════════════╗"
-		echo "║               DLT.GREEN AUTOMATIC NODE-INSTALLER WITH DOCKER                ║"
-		echo "║                                    $VRSN                                    ║"
+		echo "║ DLT.GREEN           AUTOMATIC NODE-INSTALLER WITH DOCKER            v.$VRSN ║"
+		echo "║"$ca"$VAR_DOMAIN"$xx"║"
 		echo "║                                                                             ║"
 		echo "║                            1. Reset Configuration (*.env)                   ║"
 		echo "║                            X. Use existing Configuration (*.env)            ║"
@@ -133,8 +147,8 @@ SetCertificateGlobal() {
 	clear
 	echo ""
 	echo "╔═════════════════════════════════════════════════════════════════════════════╗"
-	echo "║               DLT.GREEN AUTOMATIC NODE-INSTALLER WITH DOCKER                ║"
-	echo "║                                    $VRSN                                    ║"
+	echo "║ DLT.GREEN           AUTOMATIC NODE-INSTALLER WITH DOCKER            v.$VRSN ║"
+	echo "║"$ca"$VAR_DOMAIN"$xx"║"
 	echo "║                                                                             ║"
 	echo "║                            1. Update Certificate for all Nodes (recommend)  ║"
 	echo "║                            X. Use Certificate only for this Node            ║"
@@ -186,11 +200,24 @@ Dashboard() {
 	if [ "$(docker container inspect -f '{{.State.Status}}' 'shimmer-bee'    2>/dev/null)" = 'running' ]; then sb=$gn; else if [ -d /var/lib/shimmer-bee ];    then sb=$rd; else sb=$gr; fi; fi
 	if [ "$(docker container inspect -f '{{.State.Status}}' 'shimmer-wasp'   2>/dev/null)" = 'running' ]; then sw=$gn; else if [ -d /var/lib/shimmer-wasp ];   then sw=$rd; else sw=$gr; fi; fi
 
+	VAR_DOMAIN=''
+	
+	if [ -s "/var/lib/iota-hornet/.env" ];    then VAR_DOMAIN=$(cat /var/lib/iota-hornet/.env    | grep _HOST | cut -d '=' -f 2); fi
+	if [ -s "/var/lib/iota-bee/.env" ];       then VAR_DOMAIN=$(cat /var/lib/iota-bee/.env       | grep _HOST | cut -d '=' -f 2); fi
+	if [ -s "/var/lib/iota-goshimmer/.env" ]; then VAR_DOMAIN=$(cat /var/lib/iota-goshimmer/.env | grep _HOST | cut -d '=' -f 2); fi
+	if [ -s "/var/lib/iota-wasp/.env" ];      then VAR_DOMAIN=$(cat /var/lib/iota-wasp/.env      | grep _HOST | cut -d '=' -f 2); fi
+	if [ -s "/var/lib/shimmer-hornet/.env" ]; then VAR_DOMAIN=$(cat /var/lib/shimmer-hornet/.env | grep _HOST | cut -d '=' -f 2); fi	
+	if [ -s "/var/lib/shimmer-bee/.env" ];    then VAR_DOMAIN=$(cat /var/lib/shimmer-bee/.env    | grep _HOST | cut -d '=' -f 2); fi
+	if [ -s "/var/lib/shimmer-wasp/.env" ];   then VAR_DOMAIN=$(cat /var/lib/shimmer-wasp/.env   | grep _HOST | cut -d '=' -f 2); fi
+	
+	PositionCenter $VAR_DOMAIN
+	VAR_DOMAIN=$text
+	
 	clear
 	echo ""
 	echo "╔═════════════════════════════════════════════════════════════════════════════╗"
-	echo "║               DLT.GREEN AUTOMATIC NODE-INSTALLER WITH DOCKER                ║"
-	echo "║                                    $VRSN                                    ║"
+	echo "║ DLT.GREEN           AUTOMATIC NODE-INSTALLER WITH DOCKER            v.$VRSN ║"
+	echo "║"$ca"$VAR_DOMAIN"$xx"║"
 	echo "║                                                                             ║"
 	echo "║                             IOTA Mainnet/Devnet                             ║"
 	echo "╟─┬───────────────────┬─┬───────────────┬─┬────────────────┬─┬────────────────╢"
@@ -207,7 +234,7 @@ Dashboard() {
 	echo "║       press [S] to start all Nodes, [M] for Maintenance, [Q] to quit        ║"
 	echo "╚═════════════════════════════════════════════════════════════════════════════╝"
 	echo ""
-	echo "select menu item: "
+	echo "select menu item:"
 	echo ""
 
 	read  -p '> ' n
@@ -253,22 +280,35 @@ Dashboard() {
 	esac
 }
 
+PositionCenter() {
+	text=''
+	window_width=78
+	text_with=$(echo "$1" | wc -c)
+	window_left=$(($window_width / 2 - $text_with / 2))
+	window_right=$(($window_width - $text_with - $window_left))
+	text=$(printf "%*s%s" $window_left '' "$text")"$1"$(printf "%*s%s" $window_right '' "$text")
+}
+
 DashboardHelper() {
 Dashboard
 }
 
 MainMenu() {
+
+	if [ -z "$VAR_DOMAIN" ]; then PositionCenter ''; VAR_DOMAIN=$text; fi
+
 	clear
 	echo ""
 	echo "╔═════════════════════════════════════════════════════════════════════════════╗"
-	echo "║               DLT.GREEN AUTOMATIC NODE-INSTALLER WITH DOCKER                ║"
-	echo "║                                    $VRSN                                    ║"
+	echo "║ DLT.GREEN           AUTOMATIC NODE-INSTALLER WITH DOCKER            v.$VRSN ║"
+	echo "║"$ca"$VAR_DOMAIN"$xx"║"
 	echo "║                                                                             ║"
 	echo "║                              1. System Updates/Docker Cleanup               ║"
 	echo "║                              2. Docker Installation                         ║"
 	echo "║                              3. Docker Status                               ║"
 	echo "║                              4. License Information                         ║"
 	echo "║                              X. Management Dashboard                        ║"
+	echo "║                              Q. Quit                                        ║"
 	echo "║                                                                             ║"
 	echo "╚═════════════════════════════════════════════════════════════════════════════╝"
 	echo ""
@@ -281,7 +321,14 @@ MainMenu() {
 	2) Docker ;;
 	3) docker stats 2>/dev/null ;;
 	4) SubMenuLicense ;;
-	*) Dashboard ;;
+	q|Q) clear; exit ;;  
+	*) docker --version | grep "Docker version" >/dev/null 2>&1
+	   if [ $? -eq 0 ]; then Dashboard; else
+  	     echo ""
+  	     echo "$rd""Attention! Please install Docker! Loading Dashboard aborted!""$xx"
+	     echo $fl; read -p 'Press [Enter] key to continue... Press [STRG+C] to cancel...' W; echo $xx	 
+	     MainMenu
+       fi;;
 	esac
 }
 
@@ -289,8 +336,8 @@ SubMenuLicense() {
 	clear
 	echo ""
 	echo "╔═════════════════════════════════════════════════════════════════════════════╗"
-	echo "║               DLT.GREEN AUTOMATIC NODE-INSTALLER WITH DOCKER                ║"
-	echo "║                                    $VRSN                                    ║"
+	echo "║ DLT.GREEN           AUTOMATIC NODE-INSTALLER WITH DOCKER            v.$VRSN ║"
+	echo "║"$ca"$VAR_DOMAIN"$xx"║"
 	echo "║                                                                             ║"
 	echo "║                      GNU General Public License v3.0                        ║"
 	echo "║                                                                             ║"
@@ -319,8 +366,8 @@ SubMenuMaintenance() {
 	clear
 	echo ""
 	echo "╔═════════════════════════════════════════════════════════════════════════════╗"
-	echo "║               DLT.GREEN AUTOMATIC NODE-INSTALLER WITH DOCKER                ║"
-	echo "║                                    $VRSN                                    ║"
+	echo "║ DLT.GREEN           AUTOMATIC NODE-INSTALLER WITH DOCKER            v.$VRSN ║"
+	echo "║"$ca"$VAR_DOMAIN"$xx"║"
 	echo "║                                                                             ║"
 	echo "║                              1. Install/Update                              ║"
 	echo "║                              2. Start/Restart                               ║"
@@ -500,8 +547,8 @@ SystemMaintenance() {
 	clear
 	echo ""
 	echo "╔═════════════════════════════════════════════════════════════════════════════╗"
-	echo "║               DLT.GREEN AUTOMATIC NODE-INSTALLER WITH DOCKER                ║"
-	echo "║                                    $VRSN                                    ║"
+	echo "║ DLT.GREEN           AUTOMATIC NODE-INSTALLER WITH DOCKER            v.$VRSN ║"
+	echo "║"$ca"$VAR_DOMAIN"$xx"║"
 	echo "║                                                                             ║"
 	echo "║                            1. System Reboot (recommend)                     ║"
 	echo "║                            X. Maintenance Menu                              ║"
@@ -542,9 +589,7 @@ Docker() {
 
 	echo $fl; read -p 'Press [Enter] key to continue... Press [STRG+C] to cancel...' W; echo $xx
 
-	sudo docker ps -a -q
-	sudo apt-get install jq -y
-	sudo apt-get install expect -y
+	sudo docker ps -a -q >/dev/null 2>&1
 	
 	echo ""
 	echo "╔═════════════════════════════════════════════════════════════════════════════╗"
@@ -708,6 +753,8 @@ IotaHornet() {
 
 		echo "Set the domain name (example: $ca""vrom.dlt.green""$xx):"
 		read -p '> ' VAR_HOST
+		CheckDomain $VAR_HOST
+
 		echo ''
 		echo "Set the dashboard port (example: $ca""443""$xx):"
 		read -p '> ' VAR_IOTA_HORNET_HTTPS_PORT
@@ -912,6 +959,8 @@ IotaBee() {
 
 		echo "Set the domain name (example: $ca""vrom.dlt.green""$xx):"
 		read -p '> ' VAR_HOST
+		CheckDomain $VAR_HOST
+
 		echo ''
 		echo "Set the dashboard port (example: $ca""440""$xx):"
 		read -p '> ' VAR_IOTA_BEE_HTTPS_PORT
@@ -1099,7 +1148,9 @@ IotaWasp() {
 	echo $fl; read -p 'Press [Enter] key to continue... Press [STRG+C] to cancel...' W; echo $xx
 
 	CheckConfiguration
-	
+
+	VAR_WASP_LEDGER_NETWORK='iota'
+		
 	if [ $VAR_CONF_RESET = 1 ]; then
 	
 		clear
@@ -1111,6 +1162,8 @@ IotaWasp() {
 
 		echo "Set the domain name (example: $ca""vrom.dlt.green""$xx):"
 		read -p '> ' VAR_HOST
+		CheckDomain $VAR_HOST
+
 		echo ''
 		echo "Set the dashboard port (example: $ca""447""$xx):"
 		read -p '> ' VAR_IOTA_WASP_HTTPS_PORT
@@ -1145,7 +1198,7 @@ IotaWasp() {
 
 		if [ -d /var/lib/$VAR_DIR ]; then cd /var/lib/$VAR_DIR || exit; fi
 		if [ -f .env ]; then rm .env; fi
-
+	
 		echo "WASP_VERSION=$VAR_IOTA_WASP_VERSION" >> .env
 
 		echo "WASP_HOST=$VAR_HOST" >> .env
@@ -1153,6 +1206,7 @@ IotaWasp() {
 		echo "WASP_API_PORT=$VAR_IOTA_WASP_API_PORT" >> .env
 		echo "WASP_PEERING_PORT=$VAR_IOTA_WASP_PEERING_PORT" >> .env
 		echo "WASP_NANO_MSG_PORT=$VAR_IOTA_WASP_NANO_MSG_PORT" >> .env
+		echo "WASP_LEDGER_NETWORK=$VAR_WASP_LEDGER_NETWORK" >> .env
 		echo "WASP_LEDGER_CONNECTION=$VAR_IOTA_WASP_LEDGER_CONNECTION" >> .env
 	
 		if [ $VAR_CERT = 0 ]
@@ -1167,6 +1221,7 @@ IotaWasp() {
 			echo "WASP_SSL_KEY=/etc/letsencrypt/live/$VAR_HOST/privkey.pem" >> .env
 		fi
 	else
+		if grep -q 'WASP_LEDGER_NETWORK=' .env; then sed -i "s/WASP_LEDGER_NETWORK=.*/WASP_LEDGER_NETWORK=$VAR_WASP_LEDGER_NETWORK/g" .env; else echo "WASP_LEDGER_NETWORK=$VAR_WASP_LEDGER_NETWORK" >> .env; fi
 		if [ -f .env ]; then sed -i "s/WASP_VERSION=.*/WASP_VERSION=$VAR_IOTA_WASP_VERSION/g" .env; fi
 		VAR_HOST=$(cat .env | grep _HOST | cut -d '=' -f 2)
 	fi
@@ -1320,6 +1375,8 @@ IotaGoshimmer() {
 
 		echo "Set the domain name (example: $ca""vrom.dlt.green""$xx):"
 		read -p '> ' VAR_HOST
+		CheckDomain $VAR_HOST
+
 		echo ''
 		echo "Set the dashboard port (example: $ca""446""$xx):"
 		read -p '> ' VAR_IOTA_GOSHIMMER_HTTPS_PORT
@@ -1497,6 +1554,8 @@ ShimmerHornet() {
 
 		echo "Set the domain name (example: $ca""vrom.dlt.builders""$xx):"
 		read -p '> ' VAR_HOST
+		CheckDomain $VAR_HOST
+		
 		echo ''
 		echo "Set the dashboard port (example: $ca""443""$xx):"
 		read -p '> ' VAR_SHIMMER_HORNET_HTTPS_PORT
@@ -1710,6 +1769,8 @@ ShimmerWasp() {
 	echo $fl; read -p 'Press [Enter] key to continue... Press [STRG+C] to cancel...' W; echo $xx
 
 	CheckConfiguration
+
+	VAR_WASP_LEDGER_NETWORK='shimmer'
 	
 	if [ $VAR_CONF_RESET = 1 ]; then
 	
@@ -1722,6 +1783,8 @@ ShimmerWasp() {
 
 		echo "Set the domain name (example: $ca""vrom.dlt.green""$xx):"
 		read -p '> ' VAR_HOST
+		CheckDomain $VAR_HOST		
+		
 		echo ''
 		echo "Set the dashboard port (example: $ca""447""$xx):"
 		read -p '> ' VAR_SHIMMER_WASP_HTTPS_PORT
@@ -1763,6 +1826,7 @@ ShimmerWasp() {
 		echo "WASP_API_PORT=$VAR_SHIMMER_WASP_API_PORT" >> .env
 		echo "WASP_PEERING_PORT=$VAR_SHIMMER_WASP_PEERING_PORT" >> .env
 		echo "WASP_NANO_MSG_PORT=$VAR_SHIMMER_WASP_NANO_MSG_PORT" >> .env
+		echo "WASP_LEDGER_NETWORK=$VAR_WASP_LEDGER_NETWORK" >> .env
 		echo "WASP_LEDGER_CONNECTION=$VAR_SHIMMER_WASP_LEDGER_CONNECTION" >> .env
 	
 		if [ $VAR_CERT = 0 ]
@@ -1777,6 +1841,7 @@ ShimmerWasp() {
 			echo "WASP_SSL_KEY=/etc/letsencrypt/live/$VAR_HOST/privkey.pem" >> .env
 		fi
 	else
+		if grep -q 'WASP_LEDGER_NETWORK=' .env; then sed -i "s/WASP_LEDGER_NETWORK=.*/WASP_LEDGER_NETWORK=$VAR_WASP_LEDGER_NETWORK/g" .env; else echo "WASP_LEDGER_NETWORK=$VAR_WASP_LEDGER_NETWORK" >> .env; fi
 		if [ -f .env ]; then sed -i "s/WASP_VERSION=.*/WASP_VERSION=$VAR_SHIMMER_WASP_VERSION/g" .env; fi
 		VAR_HOST=$(cat .env | grep _HOST | cut -d '=' -f 2)
 	fi
@@ -1900,6 +1965,32 @@ RenameContainer() {
 	docker container rename shimmer-hornet_grafana_1 grafana >/dev/null 2>&1	
 	docker container rename shimmer-hornet_prometheus_1 prometheus >/dev/null 2>&1
 }
+
+clear
+echo ""
+echo "╔═════════════════════════════════════════════════════════════════════════════╗"
+echo "║ DLT.GREEN           AUTOMATIC NODE-INSTALLER WITH DOCKER            v.$VRSN ║"
+echo "║                                                                             ║"
+echo "║      ____    _      _____         ____   ____    _____   _____   _   _      ║"
+echo "║     |  _ \  | |    |_   _|       / ___| |  _ \  | ____| | ____| | \ | |     ║"
+echo "║     | | | | | |      | |        | |  _  | |_) | |  _|   |  _|   |  \| |     ║"
+echo "║     | |_| | | |___   | |    _   | |_| | |  _ <  | |___  | |___  | |\  |     ║"
+echo "║     |____/  |_____|  |_|   (_)   \____| |_| \_\ |_____| |_____| |_| \_|     ║"
+echo "║                                                                             ║"
+echo "║                                                                             ║"
+echo "║                         for IOTA and SHIMMER Nodes                          ║"
+echo "║                                                                             ║"
+echo "║                                 loading...                                  ║"
+echo "║                                                                             ║"
+echo "║         Github: https://github.com/dlt-green/node-installer-docker          ║"
+echo "║                                                                             ║"
+echo "║                       GNU General Public License v3.0                       ║"
+echo "╚═════════════════════════════════════════════════════════════════════════════╝"
+echo ""
+	
+sleep 3
+
+sudo apt-get install curl jq expect dnsutils -y -qq >/dev/null 2>&1
 
 docker --version | grep "Docker version" >/dev/null 2>&1
 if [ $? -eq 0 ]
