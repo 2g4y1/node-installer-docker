@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-source ../common/prepare_docker_functions.sh
+source ../common/scripts/prepare_docker_functions.sh
 
 check_env
 elevate_to_root
@@ -15,12 +15,12 @@ configPath="${dataDir}/config/$configFilename"
 # image="dltgreen/wasp:$WASP_VERSION"
 
 validate_ssl_config "WASP_SSL_CERT" "WASP_SSL_KEY"
-create_common_assets
+copy_common_assets
 
 # Validate HORNET_NETWORK config
 if [[ "$WASP_LEDGER_NETWORK" != "iota" ]] && [[ "$WASP_LEDGER_NETWORK" != "shimmer" ]]; then
   echo "Invalid WASP_LEDGER_NETWORK: $WASP_LEDGER_NETWORK"
-  exit -1
+  exit 255
 fi
 
 prepare_data_dir "$dataDir" "config" "waspdb"

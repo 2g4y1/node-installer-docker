@@ -50,6 +50,8 @@ services:
     image: traefik:v2.8.2
     container_name: shimmer-hornet.traefik
     restart: unless-stopped
+    env_file:
+      - .env
     command:
       - "--log.level=WARN"
       - "--metrics.prometheus=true"
@@ -74,7 +76,7 @@ services:
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "${HORNET_DATA_DIR:-./data}/letsencrypt:/letsencrypt"
-      - "./assets/traefik/${SSL_CONFIG:-letsencrypt}.yml:/etc/traefik/dynamic/config.yml:ro"
+      - "./assets/traefik:/etc/traefik/dynamic:ro"
       - "${HORNET_SSL_CERT:-./assets/traefik/certs/fake.cert}:/certs/domain.cert:ro"
       - "${HORNET_SSL_KEY:-./assets/traefik/certs/fake.key}:/certs/domain.key:ro"
     logging:
@@ -188,7 +190,7 @@ services:
     command:
       - "--inx.address=hornet:9029"
       - "--participation.db.path=/app/data/participation"
-      - "--participation.bindAddress=inx-participation:9892"
+      - "--restAPI.bindAddress=inx-participation:9892"
 
   inx-spammer:
     image: iotaledger/inx-spammer:${INX_SPAMMER_VERSION:?INX_SPAMMER_VERSION is missing}
@@ -199,7 +201,7 @@ services:
       - "/etc/localtime:/etc/localtime:ro"
     command:
       - "--inx.address=hornet:9029"
-      - "--spammer.bindAddress=inx-spammer:9092"
+      - "--restAPI.bindAddress=inx-spammer:9092"
       - "--prometheus.enabled=true"
       - "--prometheus.bindAddress=inx-spammer:9312"
 

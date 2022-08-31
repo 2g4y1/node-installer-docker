@@ -17,16 +17,24 @@ build_node () {
 
   if [ ! -d $sourceDir ]; then
     echo "Please cd to root dir to run $(basename $0)"
-    exit -1
+    exit 255
   fi
 
   rsyncExclusions=$(echo $EXCLUSIONS | sed 's/ //g' | sed 's/,/ --exclude /g' | sed 's/^/--exclude /')
 
   mkdir -p $BUILD_DIR
   rsync -a $sourceDir $BUILD_DIR $rsyncExclusions
+  
+  # common assets
+  mkdir -p $BUILD_DIR/$node/assets
+  rsync -a ./common/assets/* $BUILD_DIR/$node/assets $rsyncExclusions
+  find $BUILD_DIR/$node -type f -name 'prepare_docker.sh' -exec sed -i '/copy_common_assets/d' {} \;
+
+  # common scripts
   mkdir -p $BUILD_DIR/$node/scripts
-  cp ./common/prepare_docker_functions.sh $BUILD_DIR/$node/scripts/prepare_docker_functions.sh
-  find $BUILD_DIR/$node -type f -name '*.sh' -exec sed -i 's/..\/common\/prepare_docker_functions.sh/.\/scripts\/prepare_docker_functions.sh/g' {} \;
+  rsync -a ./common/scripts/* $BUILD_DIR/$node/scripts $rsyncExclusions
+  find $BUILD_DIR/$node -type f -name '*.sh' -exec sed -i 's/..\/common\/scripts/.\/scripts/g' {} \;
+
   find $BUILD_DIR/$node -type f -exec sed -i 's/\r//' {} \;
   (cd $BUILD_DIR/$node; tar -pcz -f ../$node.tar.gz *)
   rm -Rf $BUILD_DIR/$node
@@ -74,11 +82,11 @@ build_wasp_image () {
 
 push_docker_image () {
   local imageName=$1
-  
+
   print_line
   read -p "Push docker image to dockerhub? (y/n) " yn
   echo ""
-  case $yn in 
+  case $yn in
     y) docker push $imageName
        ;;
     *) echo "Image has not been pushed"
@@ -317,7 +325,7 @@ if [ ! $# -eq 0 ]; then
   done
 
   set -- "${POSITIONAL_ARGS[@]}"
- 
+
   if [ ! -z "$modifiedFile" ]; then
     nodes=$(echo $modifiedFile | cut -d '/' -f 2)
     if [ $nodes == "common" ]; then

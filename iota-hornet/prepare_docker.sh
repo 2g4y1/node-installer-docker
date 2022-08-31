@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-source ../common/prepare_docker_functions.sh
+source ../common/scripts/prepare_docker_functions.sh
 
 check_env
 elevate_to_root
@@ -17,12 +17,12 @@ configFilename="config-${HORNET_NETWORK:-mainnet}.json"
 configPath="${dataDir}/config/$configFilename"
 
 validate_ssl_config "HORNET_SSL_CERT" "HORNET_SSL_KEY"
-create_common_assets
+copy_common_assets
 
 # Validate HORNET_NETWORK config
 if [[ ! -z $HORNET_NETWORK ]] && [[ "$HORNET_NETWORK" != "mainnet" && "$HORNET_NETWORK" != "devnet" ]]; then
   echo "Invalid HORNET_NETWORK: $HORNET_NETWORK"
-  exit -1
+  exit 255
 fi
 
 prepare_data_dir "$dataDir" "config" "/storage/${HORNET_NETWORK:-mainnet}" "/p2pstore/${HORNET_NETWORK:-mainnet}" "/snapshots/${HORNET_NETWORK:-mainnet}" "letsencrypt"
